@@ -4,7 +4,7 @@ import pandas as pd
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="91 Game Ultimate Predictor", layout="wide")
 
-# Custom Styling for forcing colors and layout
+# Custom Styling
 st.markdown("""
     <style>
     .metric-container {
@@ -27,7 +27,7 @@ st.markdown("""
     .bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
     .bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
 
-    /* BUTTON GRID STYLING - FORCING COLORS */
+    /* BUTTON GRID STYLING */
     div.stButton > button {
         height: 60px !important;
         font-size: 24px !important;
@@ -59,7 +59,6 @@ RULES_7 = {"SBBSBSS": "S"}
 def get_bs(n):
     return "B" if int(n) >= 5 else "S"
 
-# --- LOGIC ENGINE ---
 def check_all_patterns(chain):
     res_4 = RULES_4.get(chain[-4:], "WAIT") if len(chain) >= 4 else "WAIT"
     res_5 = RULES_5.get(chain[-5:], "WAIT") if len(chain) >= 5 else "WAIT"
@@ -77,16 +76,19 @@ if 'last_bs' not in st.session_state:
 if 'stick_count' not in st.session_state:
     st.session_state.stick_count = 0
 
-# --- METRICS ---
-def calculate_metrics():
-    if not st.session_state.history_data:
+# --- METRICS LOGIC ---
+def calculate_metrics(df):
+    if df.empty:
         return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
-    df = pd.DataFrame(st.session_state.history_data)
+    
+    # We use 4D Pred as the primary dashboard tracker
     valid = df[df['4D Pred'] != "WAIT"]
     if valid.empty: return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
-    wins = len(valid[valid['Result'] == "WIN ✅"])
-    losses = len(valid[valid['Result'] == "LOSS ❌"])
-    res_list = valid['Result'].tolist()
+    
+    wins = len(valid[valid['R_4D'] == "WIN ✅"])
+    losses = len(valid[valid['R_4D'] == "LOSS ❌"])
+    
+    res_list = valid['R_4D'].tolist()
     max_w, max_l, cur_w, cur_l = 0, 0, 0, 0
     for r in res_list:
         if "WIN" in r:
@@ -103,26 +105,29 @@ def handle_click(num):
         st.session_state.stick_count = 1
     
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
-    status = "-"
-    if p4 != "WAIT":
-        status = "WIN ✅" if current_bs == p4 else "LOSS ❌"
+    
+    # Check Win/Loss for each individually
+    r4 = ("WIN ✅" if current_bs == p4 else "LOSS ❌") if p4 != "WAIT" else "-"
+    r5 = ("WIN ✅" if current_bs == p5 else "LOSS ❌") if p5 != "WAIT" else "-"
+    r6 = ("WIN ✅" if current_bs == p6 else "LOSS ❌") if p6 != "WAIT" else "-"
+    r7 = ("WIN ✅" if current_bs == p7 else "LOSS ❌") if p7 != "WAIT" else "-"
     
     st.session_state.history_data.append({
         "Number": num, "B/S": current_bs, "Stick": st.session_state.stick_count,
-        "4D Pred": p4, "5D Pred": p5, "6D Pred": p6, "7D Pred": p7, "Result": status
+        "4D Pred": p4, "R_4D": r4,
+        "5D Pred": p5, "R_5D": r5,
+        "6D Pred": p6, "R_6D": r6,
+        "7D Pred": p7, "R_7D": r7
     })
     st.session_state.last_bs = current_bs
     st.session_state.pattern_chain += current_bs
 
-# --- MAIN UI ---
-st.title("🕹️ 91 Game Predictor + Evaluation Dashboard")
-
-# Create Tabs for Live Play and Evaluation
-tab1, tab2 = st.tabs(["🎮 Live Prediction", "📂 File Evaluation"])
+# --- UI ---
+st.title("🕹️ 91 Game Predictor + Dashboard")
+tab1, tab2 = st.tabs(["🎮 Live Play", "📂 File Evaluation"])
 
 with tab1:
-    # DASHBOARD ROW
-    m = calculate_metrics()
+    m = calculate_metrics(pd.DataFrame(st.session_state.history_data))
     db_cols = st.columns(4)
     with db_cols[0]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX WIN</div><div class="metric-value">{m["MAX_WIN"]}</div></div>', unsafe_allow_html=True)
     with db_cols[1]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX LOSS</div><div class="metric-value">{m["MAX_LOSS"]}</div></div>', unsafe_allow_html=True)
@@ -130,111 +135,67 @@ with tab1:
     with db_cols[3]: st.markdown(f'<div class="metric-container"><div class="metric-label">LOSS</div><div class="metric-value">{m["LOSS"]}</div></div>', unsafe_allow_html=True)
 
     st.divider()
-
-    # PREDICTION BOXES
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
     def draw_box(label, result):
         style = "bg-big" if result == "B" else "bg-small" if result == "S" else "bg-wait"
-        display_res = "BIG (B)" if result == "B" else "SMALL (S)" if result == "S" else "WAIT..."
-        st.markdown(f'<div class="box-container {style}"><div class="label-text">{label}</div><div class="result-text">{display_res}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="box-container {style}"><div class="label-text">{label}</div><div class="result-text">{result if result != "WAIT" else "WAIT..."}</div></div>', unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
-    with c1: draw_box("4 Digit Result", p4)
-    with c2: draw_box("5 Digit Result", p5)
-    with c3: draw_box("6 Digit Result", p6)
-    with c4: draw_box("7 Digit Result", p7)
+    with c1: draw_box("4D Result", p4)
+    with c2: draw_box("5D Result", p5)
+    with c3: draw_box("6D Result", p6)
+    with c4: draw_box("7D Result", p7)
 
     st.divider()
-
     col_l, col_r = st.columns([1, 1])
     with col_l:
-        st.subheader("Click Number (0-9)")
+        st.subheader("Click Number")
         grid = [st.columns(5), st.columns(5)]
         for i in range(10):
             r, c = (0, i) if i < 5 else (1, i-5)
             if grid[r][c].button(str(i), key=f"btn_{i}"):
                 handle_click(i); st.rerun()
-
     with col_r:
-        st.subheader("Session Status")
-        st.info(f"**Current Chain:** `{st.session_state.pattern_chain[-20:]}`")
-        col_del1, col_del2 = st.columns(2)
-        with col_del1:
-            if st.button("⬅️ Delete Last", type="primary", key="del_last", use_container_width=True):
+        st.subheader("Status")
+        st.info(f"Chain: `{st.session_state.pattern_chain[-15:]}`")
+        if st.button("⬅️ Delete Last", type="primary", use_container_width=True):
+            if st.session_state.history_data:
+                st.session_state.history_data.pop(); st.session_state.pattern_chain = st.session_state.pattern_chain[:-1]
                 if st.session_state.history_data:
-                    st.session_state.history_data.pop()
-                    st.session_state.pattern_chain = st.session_state.pattern_chain[:-1]
-                    if st.session_state.history_data:
-                        last_entry = st.session_state.history_data[-1]
-                        st.session_state.last_bs = last_entry["B/S"]
-                        st.session_state.stick_count = last_entry["Stick"]
-                    else:
-                        st.session_state.last_bs = None; st.session_state.stick_count = 0
-                    st.rerun()
-        with col_del2:
-            if st.button("🗑️ Reset All", type="secondary", key="reset_all", use_container_width=True):
-                for key in list(st.session_state.keys()): del st.session_state[key]
+                    st.session_state.last_bs = st.session_state.history_data[-1]["B/S"]
+                    st.session_state.stick_count = st.session_state.history_data[-1]["Stick"]
+                else: st.session_state.last_bs = None; st.session_state.stick_count = 0
                 st.rerun()
+        if st.button("🗑️ Reset All", type="secondary", use_container_width=True):
+            for key in list(st.session_state.keys()): del st.session_state[key]
+            st.rerun()
 
     st.divider()
-    st.subheader("📋 Game History Log")
     if st.session_state.history_data:
-        df_hist = pd.DataFrame(st.session_state.history_data)
-        st.table(df_hist.iloc[::-1])
-        st.download_button("📥 Download Log CSV", data=df_hist.to_csv(index=False).encode('utf-8'), file_name="91_game_history.csv")
+        df_log = pd.DataFrame(st.session_state.history_data)
+        st.table(df_log.iloc[::-1])
 
 with tab2:
     st.header("📂 Bulk Evaluation")
-    st.write("Upload your CSV file with headers: `Ser No`, `0 to 9`, `B/S`, `R/G`")
-    uploaded_file = st.file_uploader("Choose CSV file", type="csv")
-    
+    uploaded_file = st.file_uploader("Upload CSV (Ser No, 0 to 9, B/S, R/G)", type="csv")
     if uploaded_file:
         data = pd.read_csv(uploaded_file)
         if '0 to 9' in data.columns:
-            eval_results = []
-            temp_chain = ""
-            prev_bs = None
-            eval_stick = 0
-            
-            for index, row in data.iterrows():
-                num = row['0 to 9']
-                curr_bs = get_bs(num)
-                
-                # Stick Logic
-                if prev_bs == curr_bs: eval_stick += 1
-                else: eval_stick = 1
-                
-                # Get Predictions BEFORE adding current number to chain
-                p4, p5, p6, p7 = check_all_patterns(temp_chain)
-                
-                status = "-"
-                if p4 != "WAIT":
-                    status = "WIN ✅" if curr_bs == p4 else "LOSS ❌"
-                
-                eval_results.append({
-                    "Ser No": row['Ser No'],
-                    "Number": num,
-                    "B/S": curr_bs,
-                    "Stick": eval_stick,
-                    "4D Pred": p4,
-                    "5D Pred": p5,
-                    "6D Pred": p6,
-                    "7D Pred": p7,
-                    "Result": status
+            results, chain, prev_bs, stick = [], "", None, 0
+            for _, row in data.iterrows():
+                num = row['0 to 9']; curr_bs = get_bs(num)
+                stick = stick + 1 if prev_bs == curr_bs else 1
+                p4, p5, p6, p7 = check_all_patterns(chain)
+                results.append({
+                    "Ser No": row.get('Ser No', '-'), "Number": num, "B/S": curr_bs, "Stick": stick,
+                    "4D": p4, "R_4D": ("WIN ✅" if curr_bs == p4 else "LOSS ❌") if p4 != "WAIT" else "-",
+                    "5D": p5, "R_5D": ("WIN ✅" if curr_bs == p5 else "LOSS ❌") if p5 != "WAIT" else "-",
+                    "6D": p6, "R_6D": ("WIN ✅" if curr_bs == p6 else "LOSS ❌") if p6 != "WAIT" else "-",
+                    "7D": p7, "R_7D": ("WIN ✅" if curr_bs == p7 else "LOSS ❌") if p7 != "WAIT" else "-"
                 })
-                
-                temp_chain += curr_bs
-                prev_bs = curr_bs
-            
-            eval_df = pd.DataFrame(eval_results)
-            st.success("Evaluation Complete!")
+                chain += curr_bs; prev_bs = curr_bs
+            eval_df = pd.DataFrame(results)
+            m_eval = calculate_metrics(eval_df)
+            st.success(f"Done! Dashboard: WIN: {m_eval['WINS']} | LOSS: {m_eval['LOSS']} | MAX WIN: {m_eval['MAX_WIN']} | MAX LOSS: {m_eval['MAX_LOSS']}")
             st.dataframe(eval_df)
-            
-            st.download_button(
-                label="📥 Download Evaluated CSV",
-                data=eval_df.to_csv(index=False).encode('utf-8'),
-                file_name="evaluated_results.csv",
-                mime="text/csv"
-            )
-        else:
-            st.error("Invalid File Structure! Ensure the column '0 to 9' exists.")
+            st.download_button("📥 Download Evaluated CSV", data=eval_df.to_csv(index=False).encode('utf-8'), file_name="evaluated_91.csv")
