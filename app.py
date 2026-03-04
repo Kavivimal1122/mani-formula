@@ -4,50 +4,76 @@ import pandas as pd
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="91 Game Ultimate Predictor", layout="wide")
 
-# Custom Styling
+# --- CUSTOM STYLING ---
 st.markdown("""
-    <style>
-    .metric-container {
-        background-color: #ffffff;
-        padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0;
-        text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    }
-    .metric-label { font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase; }
-    .metric-value { font-size: 20px; font-weight: bold; color: #333; }
+<style>
 
-    /* ===== BUTTON STYLE UPDATED ===== */
-    .stButton > button {
-        height: 60px;
-        font-size: 22px;
-        font-weight: 900;
-        border-radius: 8px;
-        color: white;
-    }
+.metric-container {
+    background-color: #ffffff;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    text-align: center;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+}
 
-    /* Alternate Red / Green Colors */
-    div[data-testid="column"] button[key="btn_0"] { background-color: red !important; }
-    div[data-testid="column"] button[key="btn_1"] { background-color: green !important; }
-    div[data-testid="column"] button[key="btn_2"] { background-color: red !important; }
-    div[data-testid="column"] button[key="btn_3"] { background-color: green !important; }
-    div[data-testid="column"] button[key="btn_4"] { background-color: red !important; }
-    div[data-testid="column"] button[key="btn_5"] { background-color: green !important; }
-    div[data-testid="column"] button[key="btn_6"] { background-color: red !important; }
-    div[data-testid="column"] button[key="btn_7"] { background-color: green !important; }
-    div[data-testid="column"] button[key="btn_8"] { background-color: red !important; }
-    div[data-testid="column"] button[key="btn_9"] { background-color: green !important; }
+.metric-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #666;
+    text-transform: uppercase;
+}
 
-    .box-container {
-        padding: 15px; border-radius: 12px; text-align: center; color: white;
-        font-weight: bold; min-height: 120px; display: flex; flex-direction: column;
-        justify-content: center; margin-bottom: 10px;
-    }
-    .label-text { font-size: 13px; margin-bottom: 5px; opacity: 0.9; }
-    .result-text { font-size: 28px; }
-    .bg-big { background-color: #28a745; border: 2px solid #1e7e34; }
-    .bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
-    .bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
-    </style>
-    """, unsafe_allow_html=True)
+.metric-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* BUTTON BASE STYLE */
+.stButton > button {
+    height: 60px;
+    font-size: 22px;
+    font-weight: 900;
+    border-radius: 8px;
+    color: white;
+}
+
+/* COLOR BY BUTTON TEXT (100% works in Streamlit Cloud) */
+button:has(span:contains("0")) {background-color: red !important;}
+button:has(span:contains("1")) {background-color: green !important;}
+button:has(span:contains("2")) {background-color: red !important;}
+button:has(span:contains("3")) {background-color: green !important;}
+button:has(span:contains("4")) {background-color: red !important;}
+button:has(span:contains("5")) {background-color: green !important;}
+button:has(span:contains("6")) {background-color: red !important;}
+button:has(span:contains("7")) {background-color: green !important;}
+button:has(span:contains("8")) {background-color: red !important;}
+button:has(span:contains("9")) {background-color: green !important;}
+
+/* Prediction Box Styles */
+.box-container {
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.label-text { font-size: 13px; margin-bottom: 5px; opacity: 0.9; }
+.result-text { font-size: 28px; }
+
+.bg-big { background-color: #28a745; border: 2px solid #1e7e34; }
+.bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
+.bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
+
+</style>
+""", unsafe_allow_html=True)
 
 # --- FORMULAS ---
 RULES_4 = {"BBSB": "B", "BSBB": "S"}
@@ -76,7 +102,7 @@ def check_all_patterns(chain):
     res_7 = RULES_7.get(chain[-7:], "WAIT") if len(chain) >= 7 else "WAIT"
     return res_4, res_5, res_6, res_7
 
-# --- METRICS CALCULATION ---
+# --- METRICS ---
 def calculate_metrics():
     if not st.session_state.history_data:
         return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
@@ -90,7 +116,7 @@ def calculate_metrics():
     losses = len(valid[valid['Result'] == "LOSS ❌"])
     
     res_list = valid['Result'].tolist()
-    max_w, max_l, cur_w, cur_l = 0, 0, 0, 0
+    max_w = max_l = cur_w = cur_l = 0
     
     for r in res_list:
         if "WIN" in r:
@@ -133,10 +159,9 @@ def handle_click(num):
     st.session_state.last_bs = current_bs
     st.session_state.pattern_chain += current_bs
 
-# --- UI DISPLAY ---
+# --- UI ---
 st.title("🕹️ 91 Game Predictor + Dashboard")
 
-# DASHBOARD
 m = calculate_metrics()
 db_cols = st.columns(4)
 
@@ -151,7 +176,6 @@ with db_cols[3]:
 
 st.divider()
 
-# PREDICTION BOXES
 p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
 
 def draw_box(label, result):
@@ -167,7 +191,6 @@ with c4: draw_box("7 Digit Result", p7)
 
 st.divider()
 
-# INPUT GRID
 col_l, col_r = st.columns([1, 1])
 
 with col_l:
@@ -175,42 +198,17 @@ with col_l:
     grid = [st.columns(5), st.columns(5)]
     for i in range(10):
         r, c = (0, i) if i < 5 else (1, i-5)
-        if grid[r][c].button(str(i), key=f"btn_{i}"):
+        if grid[r][c].button(str(i)):
             handle_click(i)
             st.rerun()
 
 with col_r:
     st.subheader("Session Status")
     st.info(f"**Current Chain:** `{st.session_state.pattern_chain[-20:]}`")
-    
-    col_del1, col_del2 = st.columns(2)
-    
-    with col_del1:
-        if st.button("⬅️ Delete Last Entry", type="primary", use_container_width=True):
-            if st.session_state.history_data:
-                st.session_state.history_data.pop()
-                st.session_state.pattern_chain = st.session_state.pattern_chain[:-1]
-                
-                if st.session_state.history_data:
-                    last_entry = st.session_state.history_data[-1]
-                    st.session_state.last_bs = last_entry["B/S"]
-                    st.session_state.stick_count = last_entry["Stick"]
-                else:
-                    st.session_state.last_bs = None
-                    st.session_state.stick_count = 0
-                st.rerun()
-    
-    with col_del2:
-        if st.button("🗑️ Reset All Data", type="secondary", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
 
 st.divider()
 
-# HISTORY LOG
 st.subheader("📋 Game History Log")
-
 if st.session_state.history_data:
     df = pd.DataFrame(st.session_state.history_data)
     st.table(df.iloc[::-1])
