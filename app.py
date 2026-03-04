@@ -2,37 +2,37 @@ import streamlit as st
 import pandas as pd
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="91 Game 4-Step Predictor", layout="wide")
+st.set_page_config(page_title="91 Game Ultimate Predictor", layout="wide")
 
-# Custom Styling for the Boxes
+# Custom Styling
 st.markdown("""
     <style>
+    .metric-container {
+        background-color: #ffffff;
+        padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0;
+        text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
+    .metric-label { font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase; }
+    .metric-value { font-size: 20px; font-weight: bold; color: #333; }
     .stButton>button { height: 60px; font-size: 22px; font-weight: bold; border-radius: 8px; }
     .box-container {
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        color: white;
-        font-weight: bold;
-        min-height: 130px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        margin-bottom: 10px;
+        padding: 15px; border-radius: 12px; text-align: center; color: white;
+        font-weight: bold; min-height: 120px; display: flex; flex-direction: column;
+        justify-content: center; margin-bottom: 10px;
     }
-    .label-text { font-size: 14px; margin-bottom: 5px; opacity: 0.9; text-transform: uppercase; }
-    .result-text { font-size: 30px; }
+    .label-text { font-size: 13px; margin-bottom: 5px; opacity: 0.9; }
+    .result-text { font-size: 28px; }
     .bg-big { background-color: #28a745; border: 2px solid #1e7e34; }
     .bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
     .bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- YOUR UPDATED FORMULAS ---
+# --- FORMULAS ---
 RULES_4 = {"BBSB": "B", "BSBB": "S"}
 RULES_5 = {"BBSBS": "S", "BBSSS": "S"}
 RULES_6 = {"SBBSBS": "B", "BBSBSS": "S"}
-RULES_7 = {"SBBSBSS": "S"}  # Added 7-Digit formula
+RULES_7 = {"SBBSBSS": "S"}
 
 def get_bs(n):
     return "B" if int(n) >= 5 else "S"
@@ -55,47 +55,75 @@ def check_all_patterns(chain):
     res_7 = RULES_7.get(chain[-7:], "WAIT") if len(chain) >= 7 else "WAIT"
     return res_4, res_5, res_6, res_7
 
+# --- METRICS CALCULATION ---
+def calculate_metrics():
+    if not st.session_state.history_data:
+        return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
+    
+    df = pd.DataFrame(st.session_state.history_data)
+    # Use 4D Pred as the primary tracker for Win/Loss metrics
+    valid = df[df['4D Pred'] != "WAIT"]
+    if valid.empty: return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
+    
+    wins = len(valid[valid['Result'] == "WIN ✅"])
+    losses = len(valid[valid['Result'] == "LOSS ❌"])
+    
+    # Streak Logic
+    res_list = valid['Result'].tolist()
+    max_w, max_l, cur_w, cur_l = 0, 0, 0, 0
+    for r in res_list:
+        if "WIN" in r:
+            cur_w += 1; cur_l = 0; max_w = max(max_w, cur_w)
+        else:
+            cur_l += 1; cur_w = 0; max_l = max(max_l, cur_l)
+            
+    return {"MAX_WIN": max_w, "MAX_LOSS": max_l, "WINS": wins, "LOSS": losses}
+
 # --- ACTION HANDLER ---
 def handle_click(num):
     current_bs = get_bs(num)
     
-    # Stick Logic: =IF(A2=A1, B1+1, 1)
+    # STICK LOGIC: =IF(A2=A1, B1+1, 1)
     if st.session_state.last_bs == current_bs:
         st.session_state.stick_count += 1
     else:
         st.session_state.stick_count = 1
     
-    # Capture predictions BEFORE the new input for history logging
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
     
+    # For Dashboard, we track Win/Loss against the 4D Prediction
+    status = "-"
+    if p4 != "WAIT":
+        status = "WIN ✅" if current_bs == p4 else "LOSS ❌"
+    
     st.session_state.history_data.append({
-        "Number": num, 
-        "B/S": current_bs, 
-        "Stick": st.session_state.stick_count,
-        "4D Pred": p4,
-        "5D Pred": p5,
-        "6D Pred": p6,
-        "7D Pred": p7
+        "Number": num, "B/S": current_bs, "Stick": st.session_state.stick_count,
+        "4D Pred": p4, "5D Pred": p5, "6D Pred": p6, "7D Pred": p7, "Result": status
     })
     
     st.session_state.last_bs = current_bs
     st.session_state.pattern_chain += current_bs
 
 # --- UI DISPLAY ---
-st.title("🎲 91 Game: 4-Step Pattern Predictor")
+st.title("🕹️ 91 Game Predictor + Dashboard")
 
-# Prediction Row: 4 Boxes side-by-side
+# DASHBOARD ROW
+m = calculate_metrics()
+db_cols = st.columns(4)
+with db_cols[0]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX WIN</div><div class="metric-value">{m["MAX_WIN"]}</div></div>', unsafe_allow_html=True)
+with db_cols[1]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX LOSS</div><div class="metric-value">{m["MAX_LOSS"]}</div></div>', unsafe_allow_html=True)
+with db_cols[2]: st.markdown(f'<div class="metric-container"><div class="metric-label">WINS</div><div class="metric-value">{m["WINS"]}</div></div>', unsafe_allow_html=True)
+with db_cols[3]: st.markdown(f'<div class="metric-container"><div class="metric-label">LOSS</div><div class="metric-value">{m["LOSS"]}</div></div>', unsafe_allow_html=True)
+
+st.divider()
+
+# PREDICTION BOXES
 p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
 
 def draw_box(label, result):
     style = "bg-big" if result == "B" else "bg-small" if result == "S" else "bg-wait"
     display_res = "BIG (B)" if result == "B" else "SMALL (S)" if result == "S" else "WAIT..."
-    st.markdown(f"""
-        <div class="box-container {style}">
-            <div class="label-text">{label}</div>
-            <div class="result-text">{display_res}</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="box-container {style}"><div class="label-text">{label}</div><div class="result-text">{display_res}</div></div>', unsafe_allow_html=True)
 
 c1, c2, c3, c4 = st.columns(4)
 with c1: draw_box("4 Digit Result", p4)
@@ -105,21 +133,19 @@ with c4: draw_box("7 Digit Result", p7)
 
 st.divider()
 
-# Input Row
+# INPUT GRID
 col_l, col_r = st.columns([1, 1])
 with col_l:
-    st.subheader("Click Latest Number (0-9)")
+    st.subheader("Click Number (0-9)")
     grid = [st.columns(5), st.columns(5)]
     for i in range(10):
-        r, col = (0, i) if i < 5 else (1, i-5)
-        if grid[r][col].button(str(i), key=f"btn_{i}"):
-            handle_click(i)
-            st.rerun()
+        r, c = (0, i) if i < 5 else (1, i-5)
+        if grid[r][c].button(str(i), key=f"btn_{i}"):
+            handle_click(i); st.rerun()
 
 with col_r:
-    st.subheader("Dashboard")
+    st.subheader("Session Status")
     st.info(f"**Current Chain:** `{st.session_state.pattern_chain[-20:]}`")
-    st.write(f"**Current Stick:** `{st.session_state.stick_count}`")
     if st.button("🗑️ Reset All Data"):
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
@@ -128,10 +154,5 @@ st.divider()
 st.subheader("📋 Game History Log")
 if st.session_state.history_data:
     df = pd.DataFrame(st.session_state.history_data)
-    # Latest result at the top
     st.table(df.iloc[::-1])
-    
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Log CSV", data=csv, file_name="91_game_4step_log.csv")
-else:
-    st.info("Start clicking numbers to see predictions and history.")
+    st.download_button("📥 Download Log CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="91_predictor_log.csv")
