@@ -14,7 +14,28 @@ st.markdown("""
     }
     .metric-label { font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase; }
     .metric-value { font-size: 20px; font-weight: bold; color: #333; }
-    .stButton>button { height: 60px; font-size: 22px; font-weight: bold; border-radius: 8px; }
+
+    /* ===== BUTTON STYLE UPDATED ===== */
+    .stButton > button {
+        height: 60px;
+        font-size: 22px;
+        font-weight: 900;
+        border-radius: 8px;
+        color: white;
+    }
+
+    /* Alternate Red / Green Colors */
+    div[data-testid="column"] button[key="btn_0"] { background-color: red !important; }
+    div[data-testid="column"] button[key="btn_1"] { background-color: green !important; }
+    div[data-testid="column"] button[key="btn_2"] { background-color: red !important; }
+    div[data-testid="column"] button[key="btn_3"] { background-color: green !important; }
+    div[data-testid="column"] button[key="btn_4"] { background-color: red !important; }
+    div[data-testid="column"] button[key="btn_5"] { background-color: green !important; }
+    div[data-testid="column"] button[key="btn_6"] { background-color: red !important; }
+    div[data-testid="column"] button[key="btn_7"] { background-color: green !important; }
+    div[data-testid="column"] button[key="btn_8"] { background-color: red !important; }
+    div[data-testid="column"] button[key="btn_9"] { background-color: green !important; }
+
     .box-container {
         padding: 15px; border-radius: 12px; text-align: center; color: white;
         font-weight: bold; min-height: 120px; display: flex; flex-direction: column;
@@ -62,18 +83,24 @@ def calculate_metrics():
     
     df = pd.DataFrame(st.session_state.history_data)
     valid = df[df['4D Pred'] != "WAIT"]
-    if valid.empty: return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
+    if valid.empty:
+        return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
     
     wins = len(valid[valid['Result'] == "WIN ✅"])
     losses = len(valid[valid['Result'] == "LOSS ❌"])
     
     res_list = valid['Result'].tolist()
     max_w, max_l, cur_w, cur_l = 0, 0, 0, 0
+    
     for r in res_list:
         if "WIN" in r:
-            cur_w += 1; cur_l = 0; max_w = max(max_w, cur_w)
+            cur_w += 1
+            cur_l = 0
+            max_w = max(max_w, cur_w)
         else:
-            cur_l += 1; cur_w = 0; max_l = max(max_l, cur_l)
+            cur_l += 1
+            cur_w = 0
+            max_l = max(max_l, cur_l)
             
     return {"MAX_WIN": max_w, "MAX_LOSS": max_l, "WINS": wins, "LOSS": losses}
 
@@ -93,8 +120,14 @@ def handle_click(num):
         status = "WIN ✅" if current_bs == p4 else "LOSS ❌"
     
     st.session_state.history_data.append({
-        "Number": num, "B/S": current_bs, "Stick": st.session_state.stick_count,
-        "4D Pred": p4, "5D Pred": p5, "6D Pred": p6, "7D Pred": p7, "Result": status
+        "Number": num,
+        "B/S": current_bs,
+        "Stick": st.session_state.stick_count,
+        "4D Pred": p4,
+        "5D Pred": p5,
+        "6D Pred": p6,
+        "7D Pred": p7,
+        "Result": status
     })
     
     st.session_state.last_bs = current_bs
@@ -103,13 +136,18 @@ def handle_click(num):
 # --- UI DISPLAY ---
 st.title("🕹️ 91 Game Predictor + Dashboard")
 
-# DASHBOARD ROW
+# DASHBOARD
 m = calculate_metrics()
 db_cols = st.columns(4)
-with db_cols[0]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX WIN</div><div class="metric-value">{m["MAX_WIN"]}</div></div>', unsafe_allow_html=True)
-with db_cols[1]: st.markdown(f'<div class="metric-container"><div class="metric-label">MAX LOSS</div><div class="metric-value">{m["MAX_LOSS"]}</div></div>', unsafe_allow_html=True)
-with db_cols[2]: st.markdown(f'<div class="metric-container"><div class="metric-label">WINS</div><div class="metric-value">{m["WINS"]}</div></div>', unsafe_allow_html=True)
-with db_cols[3]: st.markdown(f'<div class="metric-container"><div class="metric-label">LOSS</div><div class="metric-value">{m["LOSS"]}</div></div>', unsafe_allow_html=True)
+
+with db_cols[0]:
+    st.markdown(f'<div class="metric-container"><div class="metric-label">MAX WIN</div><div class="metric-value">{m["MAX_WIN"]}</div></div>', unsafe_allow_html=True)
+with db_cols[1]:
+    st.markdown(f'<div class="metric-container"><div class="metric-label">MAX LOSS</div><div class="metric-value">{m["MAX_LOSS"]}</div></div>', unsafe_allow_html=True)
+with db_cols[2]:
+    st.markdown(f'<div class="metric-container"><div class="metric-label">WINS</div><div class="metric-value">{m["WINS"]}</div></div>', unsafe_allow_html=True)
+with db_cols[3]:
+    st.markdown(f'<div class="metric-container"><div class="metric-label">LOSS</div><div class="metric-value">{m["LOSS"]}</div></div>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -131,27 +169,28 @@ st.divider()
 
 # INPUT GRID
 col_l, col_r = st.columns([1, 1])
+
 with col_l:
     st.subheader("Click Number (0-9)")
     grid = [st.columns(5), st.columns(5)]
     for i in range(10):
         r, c = (0, i) if i < 5 else (1, i-5)
         if grid[r][c].button(str(i), key=f"btn_{i}"):
-            handle_click(i); st.rerun()
+            handle_click(i)
+            st.rerun()
 
 with col_r:
     st.subheader("Session Status")
     st.info(f"**Current Chain:** `{st.session_state.pattern_chain[-20:]}`")
     
     col_del1, col_del2 = st.columns(2)
+    
     with col_del1:
         if st.button("⬅️ Delete Last Entry", type="primary", use_container_width=True):
             if st.session_state.history_data:
-                # Remove last item from history
                 st.session_state.history_data.pop()
-                # Remove last character from chain
                 st.session_state.pattern_chain = st.session_state.pattern_chain[:-1]
-                # Re-calculate Stick and Last BS
+                
                 if st.session_state.history_data:
                     last_entry = st.session_state.history_data[-1]
                     st.session_state.last_bs = last_entry["B/S"]
@@ -163,12 +202,20 @@ with col_r:
     
     with col_del2:
         if st.button("🗑️ Reset All Data", type="secondary", use_container_width=True):
-            for key in list(st.session_state.keys()): del st.session_state[key]
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
 
 st.divider()
+
+# HISTORY LOG
 st.subheader("📋 Game History Log")
+
 if st.session_state.history_data:
     df = pd.DataFrame(st.session_state.history_data)
     st.table(df.iloc[::-1])
-    st.download_button("📥 Download Log CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="91_predictor_log.csv")
+    st.download_button(
+        "📥 Download Log CSV",
+        data=df.to_csv(index=False).encode('utf-8'),
+        file_name="91_predictor_log.csv"
+    )
