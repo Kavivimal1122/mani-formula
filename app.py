@@ -4,7 +4,7 @@ import pandas as pd
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="91 Game Predictor Pro", layout="wide")
 
-# Custom Styling
+# Custom Styling for the UI
 st.markdown("""
     <style>
     .metric-container {
@@ -19,13 +19,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- RULE DEFINITIONS ---
-RULES = {
-    "BBSB": ["B", "S"],
-    "BBSSS": ["S"],
-    "SBBSBS": ["B", "S"],
-    "BSBB": ["S"]
-}
+# --- YOUR SPECIFIC PATTERNS ---
+# Ordered by length (longest first) to ensure correct matching
+RULES = [
+    {"pattern": "SBBSBS", "results": ["B", "S"]},
+    {"pattern": "BBSSS",  "results": ["S"]},
+    {"pattern": "BBSB",   "results": ["B", "S"]},
+    {"pattern": "BSBB",   "results": ["S"]}
+]
 
 def get_bs(n):
     return "B" if int(n) >= 5 else "S"
@@ -44,7 +45,7 @@ if 'stick_count' not in st.session_state:
 if 'pending_steps' not in st.session_state:
     st.session_state.pending_steps = []
 
-# --- METRICS ---
+# --- METRICS CALCULATION ---
 def calculate_metrics():
     if not st.session_state.history_data:
         return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0, "WIN_RATE": 0.0}
@@ -68,46 +69,50 @@ def calculate_metrics():
 def handle_click(num):
     current_bs = get_bs(num)
     
-    # Stick Logic: =IF(A2=A1, B1+1, 1)
+    # Correct Stick Logic: =IF(A2=A1, B1+1, 1)
     if st.session_state.last_bs == current_bs:
         st.session_state.stick_count += 1
     else:
         st.session_state.stick_count = 1
     
-    # Check Win/Loss for the prediction just played
+    # Check Win/Loss for the current prediction
     status = "-"
     if st.session_state.next_prediction != "WAIT":
         status = "WIN ✅" if current_bs == st.session_state.next_prediction else "LOSS ❌"
     
-    # Save History
+    # Record history
     st.session_state.history_data.append({
-        "Number": num, "B/S": current_bs, "Stick": st.session_state.stick_count,
-        "Prediction": st.session_state.next_prediction, "Result": status
+        "Number": num, 
+        "B/S": current_bs, 
+        "Stick": st.session_state.stick_count,
+        "Prediction": st.session_state.next_prediction, 
+        "Result": status
     })
     
     st.session_state.last_bs = current_bs
     st.session_state.pattern_chain += current_bs
     
-    # --- MULTI-STEP PREDICTION LOGIC ---
-    # 1. If we have a 2nd result waiting, use it now
+    # --- MULTI-STEP LOGIC ---
+    # 1. Check if we have a 2nd result already queued from a previous match
     if st.session_state.pending_steps:
         st.session_state.next_prediction = st.session_state.pending_steps.pop(0)
     else:
-        # 2. Check for a new pattern match
+        # 2. Look for a new pattern (Check Longest Patterns First)
         found_pattern = False
-        for pattern, results in RULES.items():
-            if st.session_state.pattern_chain.endswith(pattern):
+        for rule in RULES:
+            if st.session_state.pattern_chain.endswith(rule["pattern"]):
+                results = rule["results"]
                 st.session_state.next_prediction = results[0] # 1st Result
                 if len(results) > 1:
-                    st.session_state.pending_steps = results[1:] # Save 2nd Result for later
+                    st.session_state.pending_steps = results[1:] # Store 2nd Result
                 found_pattern = True
                 break
         
         if not found_pattern:
             st.session_state.next_prediction = "WAIT"
 
-# --- UI ---
-st.title("🕹️ 91 Game: Multi-Step Pattern Predictor")
+# --- UI DISPLAY ---
+st.title("🕹️ 91 Game: Advanced Sequence Predictor")
 
 m = calculate_metrics()
 c1, c2, c3, c4, c5 = st.columns(5)
@@ -126,9 +131,10 @@ with col_l:
     for i in range(10):
         r, c = (0, i) if i < 5 else (1, i-5)
         if grid[r][c].button(str(i), key=f"btn_{i}"):
-            handle_click(i); st.rerun()
+            handle_click(i)
+            st.rerun()
     
-    if st.button("🔄 Reset All"):
+    if st.button("🔄 Reset All Data"):
         for key in st.session_state.keys(): del st.session_state[key]
         st.rerun()
 
@@ -140,14 +146,14 @@ with col_r:
     elif p == "S":
         st.markdown('<div class="predict-box" style="background-color: #dc3545; color: white;">NEXT: SMALL (S)</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="predict-box" style="background-color: #ffc107; color: black;">WAIT...</div>', unsafe_allow_html=True)
+        st.markdown('<div class="predict-box" style="background-color: #ffc107; color: black;">WAITING...</div>', unsafe_allow_html=True)
     
     if st.session_state.pending_steps:
-        st.warning(f"Follow-up result queued: {st.session_state.pending_steps[0]}")
+        st.info(f"Queued Follow-up: {st.session_state.pending_steps[0]}")
 
 st.divider()
 st.subheader("📋 Game History Log")
 if st.session_state.history_data:
     df = pd.DataFrame(st.session_state.history_data)
     st.table(df.iloc[::-1])
-    st.download_button("📥 Download Log", data=df.to_csv(index=False).encode('utf-8'), file_name="91_game_log.csv")
+    st.download_button("📥 Download History", data=df.to_csv(index=False).encode('utf-8'), file_name="91_predictor_log.csv")
