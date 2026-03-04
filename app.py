@@ -4,7 +4,7 @@ import pandas as pd
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="91 Game Ultimate Predictor", layout="wide")
 
-# Custom Styling
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .metric-container {
@@ -15,7 +15,7 @@ st.markdown("""
     .metric-label { font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase; }
     .metric-value { font-size: 20px; font-weight: bold; color: #333; }
     
-    /* PREDICTION BOXES STYLING */
+    /* Box Styling */
     .box-container {
         padding: 15px; border-radius: 12px; text-align: center; color: white;
         font-weight: bold; min-height: 120px; display: flex; flex-direction: column;
@@ -27,26 +27,10 @@ st.markdown("""
     .bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
     .bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
 
-    /* BUTTON GRID STYLING */
-    div.stButton > button {
-        height: 60px !important;
-        font-size: 24px !important;
-        font-weight: bold !important;
-        color: white !important;
-        border-radius: 8px !important;
-    }
-
-    /* Red Background: 0, 2, 4, 6, 8 */
-    button[key*="btn_0"], button[key*="btn_2"], button[key*="btn_4"], button[key*="btn_6"], button[key*="btn_8"] {
-        background-color: #ff0000 !important;
-        border: 2px solid #b30000 !important;
-    }
-
-    /* Green Background: 1, 3, 5, 7, 9 */
-    button[key*="btn_1"], button[key*="btn_3"], button[key*="btn_5"], button[key*="btn_7"], button[key*="btn_9"] {
-        background-color: #008000 !important;
-        border: 2px solid #004d00 !important;
-    }
+    /* Forcing Button Colors */
+    div.stButton > button { height: 60px !important; font-size: 24px !important; font-weight: bold !important; color: white !important; border-radius: 8px !important; }
+    button[key*="btn_0"], button[key*="btn_2"], button[key*="btn_4"], button[key*="btn_6"], button[key*="btn_8"] { background-color: #ff0000 !important; border: 2px solid #b30000 !important; }
+    button[key*="btn_1"], button[key*="btn_3"], button[key*="btn_5"], button[key*="btn_7"], button[key*="btn_9"] { background-color: #008000 !important; border: 2px solid #004d00 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -66,7 +50,7 @@ def check_all_patterns(chain):
     res_7 = RULES_7.get(chain[-7:], "WAIT") if len(chain) >= 7 else "WAIT"
     return res_4, res_5, res_6, res_7
 
-# --- STATE INITIALIZATION ---
+# --- STATE MANAGEMENT ---
 if 'history_data' not in st.session_state:
     st.session_state.history_data = []
 if 'pattern_chain' not in st.session_state:
@@ -76,12 +60,11 @@ if 'last_bs' not in st.session_state:
 if 'stick_count' not in st.session_state:
     st.session_state.stick_count = 0
 
-# --- METRICS LOGIC ---
+# --- DASHBOARD METRICS ---
 def calculate_metrics(df):
-    if df.empty:
+    if df.empty or 'R_4D' not in df.columns:
         return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
     
-    # We use 4D Pred as the primary dashboard tracker
     valid = df[df['4D Pred'] != "WAIT"]
     if valid.empty: return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
     
@@ -106,7 +89,7 @@ def handle_click(num):
     
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
     
-    # Check Win/Loss for each individually
+    # Win/Loss Calculation
     r4 = ("WIN ✅" if current_bs == p4 else "LOSS ❌") if p4 != "WAIT" else "-"
     r5 = ("WIN ✅" if current_bs == p5 else "LOSS ❌") if p5 != "WAIT" else "-"
     r6 = ("WIN ✅" if current_bs == p6 else "LOSS ❌") if p6 != "WAIT" else "-"
@@ -114,17 +97,15 @@ def handle_click(num):
     
     st.session_state.history_data.append({
         "Number": num, "B/S": current_bs, "Stick": st.session_state.stick_count,
-        "4D Pred": p4, "R_4D": r4,
-        "5D Pred": p5, "R_5D": r5,
-        "6D Pred": p6, "R_6D": r6,
-        "7D Pred": p7, "R_7D": r7
+        "4D Pred": p4, "R_4D": r4, "5D Pred": p5, "R_5D": r5,
+        "6D Pred": p6, "R_6D": r6, "7D Pred": p7, "R_7D": r7
     })
     st.session_state.last_bs = current_bs
     st.session_state.pattern_chain += current_bs
 
-# --- UI ---
+# --- UI INTERFACE ---
 st.title("🕹️ 91 Game Predictor + Dashboard")
-tab1, tab2 = st.tabs(["🎮 Live Play", "📂 File Evaluation"])
+tab1, tab2 = st.tabs(["🎮 Live Play", "📂 Bulk Evaluation"])
 
 with tab1:
     m = calculate_metrics(pd.DataFrame(st.session_state.history_data))
@@ -136,6 +117,7 @@ with tab1:
 
     st.divider()
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
+    
     def draw_box(label, result):
         style = "bg-big" if result == "B" else "bg-small" if result == "S" else "bg-wait"
         st.markdown(f'<div class="box-container {style}"><div class="label-text">{label}</div><div class="result-text">{result if result != "WAIT" else "WAIT..."}</div></div>', unsafe_allow_html=True)
@@ -156,7 +138,7 @@ with tab1:
             if grid[r][c].button(str(i), key=f"btn_{i}"):
                 handle_click(i); st.rerun()
     with col_r:
-        st.subheader("Status")
+        st.subheader("Session Status")
         st.info(f"Chain: `{st.session_state.pattern_chain[-15:]}`")
         if st.button("⬅️ Delete Last", type="primary", use_container_width=True):
             if st.session_state.history_data:
@@ -170,10 +152,9 @@ with tab1:
             for key in list(st.session_state.keys()): del st.session_state[key]
             st.rerun()
 
-    st.divider()
     if st.session_state.history_data:
-        df_log = pd.DataFrame(st.session_state.history_data)
-        st.table(df_log.iloc[::-1])
+        st.divider()
+        st.table(pd.DataFrame(st.session_state.history_data).iloc[::-1])
 
 with tab2:
     st.header("📂 Bulk Evaluation")
@@ -188,14 +169,14 @@ with tab2:
                 p4, p5, p6, p7 = check_all_patterns(chain)
                 results.append({
                     "Ser No": row.get('Ser No', '-'), "Number": num, "B/S": curr_bs, "Stick": stick,
-                    "4D": p4, "R_4D": ("WIN ✅" if curr_bs == p4 else "LOSS ❌") if p4 != "WAIT" else "-",
-                    "5D": p5, "R_5D": ("WIN ✅" if curr_bs == p5 else "LOSS ❌") if p5 != "WAIT" else "-",
-                    "6D": p6, "R_6D": ("WIN ✅" if curr_bs == p6 else "LOSS ❌") if p6 != "WAIT" else "-",
-                    "7D": p7, "R_7D": ("WIN ✅" if curr_bs == p7 else "LOSS ❌") if p7 != "WAIT" else "-"
+                    "4D Pred": p4, "R_4D": ("WIN ✅" if curr_bs == p4 else "LOSS ❌") if p4 != "WAIT" else "-",
+                    "5D Pred": p5, "R_5D": ("WIN ✅" if curr_bs == p5 else "LOSS ❌") if p5 != "WAIT" else "-",
+                    "6D Pred": p6, "R_6D": ("WIN ✅" if curr_bs == p6 else "LOSS ❌") if p6 != "WAIT" else "-",
+                    "7D Pred": p7, "R_7D": ("WIN ✅" if curr_bs == p7 else "LOSS ❌") if p7 != "WAIT" else "-"
                 })
                 chain += curr_bs; prev_bs = curr_bs
             eval_df = pd.DataFrame(results)
             m_eval = calculate_metrics(eval_df)
-            st.success(f"Done! Dashboard: WIN: {m_eval['WINS']} | LOSS: {m_eval['LOSS']} | MAX WIN: {m_eval['MAX_WIN']} | MAX LOSS: {m_eval['MAX_LOSS']}")
+            st.success(f"Dashboard: WIN: {m_eval['WINS']} | LOSS: {m_eval['LOSS']} | MAX WIN: {m_eval['MAX_WIN']} | MAX LOSS: {m_eval['MAX_LOSS']}")
             st.dataframe(eval_df)
             st.download_button("📥 Download Evaluated CSV", data=eval_df.to_csv(index=False).encode('utf-8'), file_name="evaluated_91.csv")
