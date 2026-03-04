@@ -4,10 +4,9 @@ import pandas as pd
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="91 Game Ultimate Predictor", layout="wide")
 
-# --- CUSTOM STYLING ---
+# --- BASIC STYLING ---
 st.markdown("""
 <style>
-
 .metric-container {
     background-color: #ffffff;
     padding: 10px;
@@ -16,42 +15,17 @@ st.markdown("""
     text-align: center;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
 }
-
 .metric-label {
     font-size: 12px;
     font-weight: bold;
     color: #666;
     text-transform: uppercase;
 }
-
 .metric-value {
     font-size: 20px;
     font-weight: bold;
     color: #333;
 }
-
-/* BUTTON BASE STYLE */
-.stButton > button {
-    height: 60px;
-    font-size: 22px;
-    font-weight: 900;
-    border-radius: 8px;
-    color: white;
-}
-
-/* COLOR BY BUTTON TEXT (100% works in Streamlit Cloud) */
-button:has(span:contains("0")) {background-color: red !important;}
-button:has(span:contains("1")) {background-color: green !important;}
-button:has(span:contains("2")) {background-color: red !important;}
-button:has(span:contains("3")) {background-color: green !important;}
-button:has(span:contains("4")) {background-color: red !important;}
-button:has(span:contains("5")) {background-color: green !important;}
-button:has(span:contains("6")) {background-color: red !important;}
-button:has(span:contains("7")) {background-color: green !important;}
-button:has(span:contains("8")) {background-color: red !important;}
-button:has(span:contains("9")) {background-color: green !important;}
-
-/* Prediction Box Styles */
 .box-container {
     padding: 15px;
     border-radius: 12px;
@@ -64,14 +38,11 @@ button:has(span:contains("9")) {background-color: green !important;}
     justify-content: center;
     margin-bottom: 10px;
 }
-
 .label-text { font-size: 13px; margin-bottom: 5px; opacity: 0.9; }
 .result-text { font-size: 28px; }
-
 .bg-big { background-color: #28a745; border: 2px solid #1e7e34; }
 .bg-small { background-color: #dc3545; border: 2px solid #bd2130; }
 .bg-wait { background-color: #ffc107; color: black; border: 2px solid #e0a800; }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,7 +55,7 @@ RULES_7 = {"SBBSBSS": "S"}
 def get_bs(n):
     return "B" if int(n) >= 5 else "S"
 
-# --- STATE INITIALIZATION ---
+# --- STATE ---
 if 'history_data' not in st.session_state:
     st.session_state.history_data = []
 if 'pattern_chain' not in st.session_state:
@@ -94,7 +65,7 @@ if 'last_bs' not in st.session_state:
 if 'stick_count' not in st.session_state:
     st.session_state.stick_count = 0
 
-# --- PREDICTION LOGIC ---
+# --- PREDICTION ---
 def check_all_patterns(chain):
     res_4 = RULES_4.get(chain[-4:], "WAIT") if len(chain) >= 4 else "WAIT"
     res_5 = RULES_5.get(chain[-5:], "WAIT") if len(chain) >= 5 else "WAIT"
@@ -130,7 +101,7 @@ def calculate_metrics():
             
     return {"MAX_WIN": max_w, "MAX_LOSS": max_l, "WINS": wins, "LOSS": losses}
 
-# --- ACTION HANDLER ---
+# --- CLICK ---
 def handle_click(num):
     current_bs = get_bs(num)
     
@@ -163,16 +134,18 @@ def handle_click(num):
 st.title("🕹️ 91 Game Predictor + Dashboard")
 
 m = calculate_metrics()
-db_cols = st.columns(4)
+cols = st.columns(4)
+labels = ["MAX WIN", "MAX LOSS", "WINS", "LOSS"]
 
-with db_cols[0]:
-    st.markdown(f'<div class="metric-container"><div class="metric-label">MAX WIN</div><div class="metric-value">{m["MAX_WIN"]}</div></div>', unsafe_allow_html=True)
-with db_cols[1]:
-    st.markdown(f'<div class="metric-container"><div class="metric-label">MAX LOSS</div><div class="metric-value">{m["MAX_LOSS"]}</div></div>', unsafe_allow_html=True)
-with db_cols[2]:
-    st.markdown(f'<div class="metric-container"><div class="metric-label">WINS</div><div class="metric-value">{m["WINS"]}</div></div>', unsafe_allow_html=True)
-with db_cols[3]:
-    st.markdown(f'<div class="metric-container"><div class="metric-label">LOSS</div><div class="metric-value">{m["LOSS"]}</div></div>', unsafe_allow_html=True)
+for i in range(4):
+    with cols[i]:
+        st.markdown(
+            f'<div class="metric-container">'
+            f'<div class="metric-label">{labels[i]}</div>'
+            f'<div class="metric-value">{list(m.values())[i]}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
 st.divider()
 
@@ -180,8 +153,14 @@ p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
 
 def draw_box(label, result):
     style = "bg-big" if result == "B" else "bg-small" if result == "S" else "bg-wait"
-    display_res = "BIG (B)" if result == "B" else "SMALL (S)" if result == "S" else "WAIT..."
-    st.markdown(f'<div class="box-container {style}"><div class="label-text">{label}</div><div class="result-text">{display_res}</div></div>', unsafe_allow_html=True)
+    display = "BIG (B)" if result == "B" else "SMALL (S)" if result == "S" else "WAIT..."
+    st.markdown(
+        f'<div class="box-container {style}">'
+        f'<div class="label-text">{label}</div>'
+        f'<div class="result-text">{display}</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 c1, c2, c3, c4 = st.columns(4)
 with c1: draw_box("4 Digit Result", p4)
@@ -191,16 +170,37 @@ with c4: draw_box("7 Digit Result", p7)
 
 st.divider()
 
+# --- COLORED NUMBER BUTTONS (WORKING METHOD) ---
 col_l, col_r = st.columns([1, 1])
 
 with col_l:
     st.subheader("Click Number (0-9)")
+    
     grid = [st.columns(5), st.columns(5)]
+    
     for i in range(10):
         r, c = (0, i) if i < 5 else (1, i-5)
-        if grid[r][c].button(str(i)):
-            handle_click(i)
-            st.rerun()
+        bg_color = "#ff4b4b" if i % 2 == 0 else "#28a745"
+        
+        with grid[r][c]:
+            st.markdown(
+                f"""
+                <style>
+                div[data-testid="stButton"] > button {{
+                    background-color: {bg_color};
+                    color: white;
+                    font-weight: 900;
+                    height: 60px;
+                    border-radius: 8px;
+                }}
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            if st.button(str(i), key=f"btn_{i}"):
+                handle_click(i)
+                st.rerun()
 
 with col_r:
     st.subheader("Session Status")
