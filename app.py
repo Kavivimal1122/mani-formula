@@ -61,14 +61,12 @@ def calculate_metrics():
         return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
     
     df = pd.DataFrame(st.session_state.history_data)
-    # Use 4D Pred as the primary tracker for Win/Loss metrics
     valid = df[df['4D Pred'] != "WAIT"]
     if valid.empty: return {"MAX_WIN": 0, "MAX_LOSS": 0, "WINS": 0, "LOSS": 0}
     
     wins = len(valid[valid['Result'] == "WIN ✅"])
     losses = len(valid[valid['Result'] == "LOSS ❌"])
     
-    # Streak Logic
     res_list = valid['Result'].tolist()
     max_w, max_l, cur_w, cur_l = 0, 0, 0, 0
     for r in res_list:
@@ -83,7 +81,6 @@ def calculate_metrics():
 def handle_click(num):
     current_bs = get_bs(num)
     
-    # STICK LOGIC: =IF(A2=A1, B1+1, 1)
     if st.session_state.last_bs == current_bs:
         st.session_state.stick_count += 1
     else:
@@ -91,7 +88,6 @@ def handle_click(num):
     
     p4, p5, p6, p7 = check_all_patterns(st.session_state.pattern_chain)
     
-    # For Dashboard, we track Win/Loss against the 4D Prediction
     status = "-"
     if p4 != "WAIT":
         status = "WIN ✅" if current_bs == p4 else "LOSS ❌"
@@ -146,9 +142,29 @@ with col_l:
 with col_r:
     st.subheader("Session Status")
     st.info(f"**Current Chain:** `{st.session_state.pattern_chain[-20:]}`")
-    if st.button("🗑️ Reset All Data"):
-        for key in list(st.session_state.keys()): del st.session_state[key]
-        st.rerun()
+    
+    col_del1, col_del2 = st.columns(2)
+    with col_del1:
+        if st.button("⬅️ Delete Last Entry", type="primary", use_container_width=True):
+            if st.session_state.history_data:
+                # Remove last item from history
+                st.session_state.history_data.pop()
+                # Remove last character from chain
+                st.session_state.pattern_chain = st.session_state.pattern_chain[:-1]
+                # Re-calculate Stick and Last BS
+                if st.session_state.history_data:
+                    last_entry = st.session_state.history_data[-1]
+                    st.session_state.last_bs = last_entry["B/S"]
+                    st.session_state.stick_count = last_entry["Stick"]
+                else:
+                    st.session_state.last_bs = None
+                    st.session_state.stick_count = 0
+                st.rerun()
+    
+    with col_del2:
+        if st.button("🗑️ Reset All Data", type="secondary", use_container_width=True):
+            for key in list(st.session_state.keys()): del st.session_state[key]
+            st.rerun()
 
 st.divider()
 st.subheader("📋 Game History Log")
